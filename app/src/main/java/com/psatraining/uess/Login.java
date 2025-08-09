@@ -1,12 +1,11 @@
 package com.psatraining.uess;
 
 import android.os.Bundle;
-
-import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.graphics.Insets;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
+import android.widget.ImageView;
+import com.psatraining.uess.Utility.QRUtility;
+
+
 
 public class Login extends AppCompatActivity {
 
@@ -15,6 +14,7 @@ public class Login extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-
+        ImageView qrImageView = findViewById(R.id.qrcode);
+        QRUtility.showDeviceQRCode(this, qrImageView);
     }
 }
