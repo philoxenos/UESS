@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Default screen margins -->
+    <dimen name="title_text_size">45sp</dimen>
+    <dimen name="psa_logo_width">180dp</dimen>
+    <dimen name="psa_logo_height">130dp</dimen>
+    <dimen name="globe_width">130dp</dimen>
+    <dimen name="globe_height">500dp</dimen>
+</resources>

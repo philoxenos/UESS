@@ -1,125 +1,181 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:fillViewport="true"
     android:fitsSystemWindows="true"
     tools:context=".Login">
 
+    <!-- Guidelines for responsive positioning -->
+    <androidx.constraintlayout.widget.Guideline
+        android:id="@+id/guideline_start"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        app:layout_constraintGuide_percent="0.08" />
+
+    <androidx.constraintlayout.widget.Guideline
+        android:id="@+id/guideline_end"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        app:layout_constraintGuide_percent="0.92" />
+
+    <!-- Background decorative image -->
     <ImageView
         android:id="@+id/imageView"
-        android:layout_width="431dp"
-        android:layout_height="336dp"
-        android:layout_marginStart="172dp"
-        android:layout_marginBottom="684dp"
+        android:layout_width="@dimen/globe_height"
+        android:layout_height="@dimen/globe_height"
         android:alpha="0.1"
+        android:contentDescription="Background globe"
         android:rotation="56"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:srcCompat="@drawable/globe" />
+        android:translationX="30dp"
+        android:translationY="-30dp"
+        app:layout_constraintBottom_toTopOf="parent"
+        app:layout_constraintDimensionRatio="1:1"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintWidth_percent="0.8"
+        app:srcCompat="@drawable/globe_original" />
 
     <ImageView
         android:id="@+id/imageView2"
-        android:layout_width="108dp"
-        android:layout_height="158dp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toStartOf="@+id/imageView"
-        app:layout_constraintHorizontal_bias="0.359"
-        app:layout_constraintStart_toStartOf="parent"
+        android:layout_width="@dimen/psa_logo_height"
+        android:layout_height="@dimen/psa_logo_height"
+        android:layout_marginTop="24dp"
+        android:contentDescription="PSA logo"
+        app:layout_constraintDimensionRatio="108:158"
+        app:layout_constraintStart_toStartOf="@id/guideline_start"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.021"
+        app:layout_constraintWidth_percent="0.2"
         app:srcCompat="@drawable/psa" />
 
+    <!-- Main title text -->
     <TextView
         android:id="@+id/textView"
-        android:layout_width="331dp"
-        android:layout_height="246dp"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="0dp"
         android:fontFamily="sans-serif"
         android:text="UNIFIED ENTERPRISE SURVEY SYSTEM"
-        android:textSize="48sp"
+        android:textColor="@color/title_text"
+        android:textSize="@dimen/title_text_size"
         android:textStyle="bold"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.287"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/imageView2"
-        app:layout_constraintVertical_bias="0.0" />
+        app:layout_constraintEnd_toEndOf="@id/guideline_end"
+        app:layout_constraintStart_toStartOf="@id/guideline_start"
+        app:layout_constraintTop_toBottomOf="@+id/imageView2" />
 
+    <!-- Divider line -->
+    <View
+        android:id="@+id/view"
+        android:layout_width="0dp"
+        android:layout_height="1dp"
+        android:layout_marginTop="28dp"
+        android:background="@color/divider"
+        app:layout_constraintEnd_toEndOf="@id/guideline_end"
+        app:layout_constraintStart_toStartOf="@id/guideline_start"
+        app:layout_constraintTop_toBottomOf="@+id/textView" />
+
+    <!-- Google sign-in button -->
     <com.google.android.material.button.MaterialButton
         android:id="@+id/button"
-        android:layout_width="366dp"
+        android:layout_width="0dp"
         android:layout_height="58dp"
-        android:layout_marginBottom="144dp"
+        android:layout_marginTop="32dp"
         android:text="Continue with Google"
-        android:textColor="#757575"
-        android:textSize="16dp"
+        android:textColor="@color/google_btn_text"
+        android:textSize="16sp"
         android:textStyle="normal|bold"
-        app:backgroundTint="@android:color/transparent"
+        app:backgroundTint="@color/white"
         app:cornerRadius="12dp"
         app:icon="@drawable/google"
         app:iconGravity="textStart"
         app:iconPadding="16dp"
         app:iconTint="@null"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.488"
-        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="@id/guideline_end"
+        app:layout_constraintStart_toStartOf="@id/guideline_start"
         app:layout_constraintTop_toBottomOf="@+id/view"
-        app:layout_constraintVertical_bias="0.141"
         app:rippleColor="#E0E0E0"
         app:strokeColor="#E0E0E0"
         app:strokeWidth="2dp" />
 
-    <View
-        android:id="@+id/view"
-        android:layout_width="370dp"
-        android:layout_height="1dp"
-        android:layout_marginTop="28dp"
-        android:background="@android:color/black"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.487"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/textView" />
-
-    <ImageView
-        android:id="@+id/qrcode"
-        android:layout_width="170dp"
-        android:layout_height="150dp"
-        android:layout_marginTop="28dp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.497"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/button"
-        app:srcCompat="@drawable/qrcode" />
+    <!-- Horizontal chain for "Forgot Password?" and "Click Here" -->
+    <TextView
+        android:id="@+id/textView2"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="Forgot Password?"
+        android:textColor="@color/title_text"
+        app:layout_constraintEnd_toStartOf="@+id/textView5"
+        app:layout_constraintHorizontal_chainStyle="packed"
+        app:layout_constraintStart_toStartOf="@id/guideline_start"
+        app:layout_constraintTop_toBottomOf="@+id/button" />
 
     <TextView
+        android:id="@+id/textView5"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:clickable="true"
+        android:text="Click Here"
+        android:textColor="@color/warning"
+        android:textStyle="bold"
+        app:layout_constraintBottom_toBottomOf="@+id/textView2"
+        app:layout_constraintEnd_toEndOf="@id/guideline_end"
+        app:layout_constraintStart_toEndOf="@+id/textView2"
+        app:layout_constraintTop_toTopOf="@+id/textView2"
+        tools:ignore="TouchTargetSizeCheck" />
+
+    <!-- QR code container -->
+    <LinearLayout
+        android:id="@+id/qrcode_container"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="30dp"
+        android:gravity="center"
+        android:orientation="vertical"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/textView2">
+
+        <ImageView
+            android:id="@+id/qrcode"
+            android:layout_width="150dp"
+            android:layout_height="150dp"
+            android:contentDescription="QR code for device registration"
+            app:srcCompat="@drawable/qrcode_original" />
+
+        <TextView
+            android:id="@+id/textView4"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="Scan to Register Device"
+            android:textAlignment="center"
+            android:textColor="@color/title_text"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <!-- Warning text -->
+    <TextView
         android:id="@+id/textView3"
-        android:layout_width="157dp"
-        android:layout_height="47dp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:layout_marginBottom="24dp"
         android:text="This is for Testing Purposes only"
         android:textAlignment="center"
-        android:textColor="#F44336"
+        android:textColor="@color/warning"
         android:textStyle="bold"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/textView4"
-        app:layout_constraintVertical_bias="0.625" />
-
-    <TextView
-        android:id="@+id/textView4"
-        android:layout_width="162dp"
-        android:layout_height="25dp"
-        android:layout_marginTop="12dp"
-        android:text="Scan to Register Device"
-        android:textAlignment="center"
-        android:textStyle="bold"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.497"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/qrcode" />
+        app:layout_constraintTop_toBottomOf="@+id/qrcode_container"
+        app:layout_constraintVertical_bias="0" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

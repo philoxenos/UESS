@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="divider">#000000</color>
-    <color name="warning">#F44336</color>
+    <color name="divider">#FFFFFF</color>
+    <color name="warning">#FF8A80</color>
     <color name="google_btn_text">#333333</color>
     <color name="white">#FFFFFF</color>
-    <color name="title_text">#222222</color>
+    <color name="title_text">#FFFFFF</color>
 </resources>

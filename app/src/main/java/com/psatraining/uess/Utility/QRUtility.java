@@ -1,6 +1,7 @@
 package com.psatraining.uess.Utility;
 
 import android.content.Context;
+import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.os.Build;
@@ -32,14 +33,18 @@ public class QRUtility {
 
         int size = 400; // width and height of QR
         try {
-            Bitmap qrBitmap = generateTransparentQRCode(qrContent, size);
+            Bitmap qrBitmap = generateTransparentQRCode(context, qrContent, size); // <-- pass context here
             qrImageView.setImageBitmap(qrBitmap);
         } catch (WriterException e) {
             e.printStackTrace();
         }
     }
 
-    public static Bitmap generateTransparentQRCode(String content, int size) throws WriterException {
+    public static Bitmap generateTransparentQRCode(Context context, String content, int size) throws WriterException {
+        // Check if dark mode is enabled
+        int nightModeFlags = context.getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK;
+        boolean isDarkMode = nightModeFlags == Configuration.UI_MODE_NIGHT_YES;
+
         Hashtable<EncodeHintType, Object> hints = new Hashtable<>();
         hints.put(EncodeHintType.MARGIN, 1); // minimal margin
 
@@ -55,7 +60,11 @@ public class QRUtility {
 
         for (int x = 0; x < size; x++) {
             for (int y = 0; y < size; y++) {
-                bitmap.setPixel(x, y, bitMatrix.get(x, y) ? Color.BLACK : Color.TRANSPARENT);
+                if (bitMatrix.get(x, y)) {
+                    bitmap.setPixel(x, y, isDarkMode ? Color.WHITE : Color.BLACK);
+                } else {
+                    bitmap.setPixel(x, y, Color.TRANSPARENT);
+                }
             }
         }
         return bitmap;
