@@ -1,0 +1,215 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fitsSystemWindows="true"
+    tools:context=".Homepage">
+
+  <!-- Guidelines for responsive positioning -->
+  <androidx.constraintlayout.widget.Guideline
+      android:id="@+id/guideline_start"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:orientation="vertical"
+      app:layout_constraintGuide_percent="0.08" />
+
+  <androidx.constraintlayout.widget.Guideline
+      android:id="@+id/guideline_end"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:orientation="vertical"
+      app:layout_constraintGuide_percent="0.92" />
+
+  <!-- Background decorative image -->
+  <ImageView
+      android:id="@+id/background_globe"
+      android:layout_width="@dimen/globe_height"
+      android:layout_height="@dimen/globe_height"
+      android:alpha="0.1"
+      android:contentDescription="Background globe"
+      android:rotation="56"
+      android:translationX="30dp"
+      android:translationY="-30dp"
+      app:layout_constraintBottom_toTopOf="parent"
+      app:layout_constraintDimensionRatio="1:1"
+      app:layout_constraintEnd_toEndOf="parent"
+      app:layout_constraintStart_toEndOf="parent"
+      app:layout_constraintTop_toTopOf="parent"
+      app:layout_constraintWidth_percent="0.8"
+      app:srcCompat="@drawable/globe_original" />
+
+  <!-- PSA Logo -->
+  <ImageView
+      android:id="@+id/logo_image"
+      android:layout_width="@dimen/psa_logo_height"
+      android:layout_height="@dimen/psa_logo_height"
+      android:layout_marginTop="24dp"
+      android:contentDescription="PSA logo"
+      app:layout_constraintDimensionRatio="108:158"
+      app:layout_constraintStart_toStartOf="@id/guideline_start"
+      app:layout_constraintTop_toTopOf="parent"
+      app:layout_constraintWidth_percent="0.2"
+      app:srcCompat="@drawable/psa" />
+
+  <!-- Main Dashboard Title -->
+  <TextView
+      android:id="@+id/dashboard_title"
+      android:layout_width="0dp"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="24dp"
+      android:fontFamily="sans-serif"
+      android:text="DASHBOARD"
+      android:textColor="@color/title_text"
+      android:textSize="24sp"
+      android:textStyle="bold"
+      app:layout_constraintEnd_toEndOf="@id/guideline_end"
+      app:layout_constraintStart_toStartOf="@id/guideline_start"
+      app:layout_constraintTop_toBottomOf="@+id/logo_image" />
+
+  <!-- Divider line -->
+  <View
+      android:id="@+id/divider"
+      android:layout_width="0dp"
+      android:layout_height="1dp"
+      android:layout_marginTop="16dp"
+      android:background="@color/divider"
+      app:layout_constraintEnd_toEndOf="@id/guideline_end"
+      app:layout_constraintStart_toStartOf="@id/guideline_start"
+      app:layout_constraintTop_toBottomOf="@+id/dashboard_title" />
+
+  <!-- Welcome message -->
+  <TextView
+      android:id="@+id/welcome_text"
+      android:layout_width="0dp"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="32dp"
+      android:fontFamily="sans-serif"
+      android:textColor="@color/title_text"
+      android:textSize="20sp"
+      android:textStyle="bold"
+      app:layout_constraintEnd_toEndOf="@id/guideline_end"
+      app:layout_constraintStart_toStartOf="@id/guideline_start"
+      app:layout_constraintTop_toBottomOf="@+id/divider"
+      tools:text="Welcome, John Doe" />
+
+  <!-- User role information -->
+  <TextView
+      android:id="@+id/role_text"
+      android:layout_width="0dp"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="8dp"
+      android:fontFamily="sans-serif"
+      android:textColor="@color/title_text"
+      android:textSize="16sp"
+      app:layout_constraintEnd_toEndOf="@id/guideline_end"
+      app:layout_constraintStart_toStartOf="@id/guideline_start"
+      app:layout_constraintTop_toBottomOf="@+id/welcome_text"
+      tools:text="Roles: Administrator, Analyst" />
+
+  <!-- Card for system status -->
+  <com.google.android.material.card.MaterialCardView
+      android:id="@+id/status_card"
+      android:layout_width="0dp"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="32dp"
+      app:cardCornerRadius="12dp"
+      app:cardElevation="4dp"
+      app:layout_constraintEnd_toEndOf="@id/guideline_end"
+      app:layout_constraintStart_toStartOf="@id/guideline_start"
+      app:layout_constraintTop_toBottomOf="@+id/role_text">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="16dp">
+
+      <TextView
+          android:id="@+id/status_title"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:text="System Status"
+          android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
+          app:layout_constraintStart_toStartOf="parent"
+          app:layout_constraintTop_toTopOf="parent" />
+
+      <TextView
+          android:id="@+id/status_description"
+          android:layout_width="0dp"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="8dp"
+          android:text="All systems operational"
+          android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
+          android:textColor="#4CAF50"
+          app:layout_constraintEnd_toEndOf="parent"
+          app:layout_constraintStart_toStartOf="parent"
+          app:layout_constraintTop_toBottomOf="@+id/status_title" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+  </com.google.android.material.card.MaterialCardView>
+
+  <!-- Quick access buttons -->
+  <LinearLayout
+      android:id="@+id/quick_actions"
+      android:layout_width="0dp"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="24dp"
+      android:orientation="vertical"
+      app:layout_constraintEnd_toEndOf="@id/guideline_end"
+      app:layout_constraintStart_toStartOf="@id/guideline_start"
+      app:layout_constraintTop_toBottomOf="@+id/status_card">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Quick Actions"
+        android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
+        android:layout_marginBottom="16dp" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/surveys_button"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="View Surveys"
+        android:layout_marginBottom="8dp"
+        app:icon="@android:drawable/ic_menu_edit"
+        app:iconGravity="textStart" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/reports_button"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Generate Reports"
+        android:layout_marginBottom="8dp"
+        app:icon="@android:drawable/ic_menu_agenda"
+        app:iconGravity="textStart" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/settings_button"
+        style="@style/Widget.Material3.Button.OutlinedButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Profile Settings"
+        app:icon="@android:drawable/ic_menu_manage"
+        app:iconGravity="textStart" />
+
+  </LinearLayout>
+
+  <!-- Warning text at bottom -->
+  <TextView
+      android:id="@+id/warning_text"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:layout_marginBottom="24dp"
+      android:text="This is for Testing Purposes only"
+      android:textAlignment="center"
+      android:textColor="@color/warning"
+      android:textStyle="bold"
+      app:layout_constraintBottom_toBottomOf="parent"
+      app:layout_constraintEnd_toEndOf="parent"
+      app:layout_constraintStart_toStartOf="parent" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

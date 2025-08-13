@@ -12,11 +12,15 @@ constraintlayout = "2.2.1"
 playServicesAuth = "21.4.0"
 retrofit = "3.0.0"
 roomRuntime = "2.5.2"
+roomRxjava3 = "2.7.2"
+rxandroid = "3.0.2"
+rxjava = "3.1.11"
 securityCrypto = "1.1.0"
 sqlite = "2.5.2"
 zxingAndroidEmbedded = "4.3.0"
 
 [libraries]
+adapter-rxjava3 = { module = "com.squareup.retrofit2:adapter-rxjava3", version.ref = "retrofit" }
 android-database-sqlcipher = { module = "net.zetetic:android-database-sqlcipher", version.ref = "androidDatabaseSqlcipher" }
 converter-gson = { module = "com.squareup.retrofit2:converter-gson", version.ref = "retrofit" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
@@ -30,6 +34,9 @@ constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayo
 play-services-auth = { module = "com.google.android.gms:play-services-auth", version.ref = "playServicesAuth" }
 retrofit = { module = "com.squareup.retrofit2:retrofit", version.ref = "retrofit" }
 room-runtime = { module = "androidx.room:room-runtime", version.ref = "roomRuntime" }
+room-rxjava3 = { module = "androidx.room:room-rxjava3", version.ref = "roomRxjava3" }
+rxandroid = { module = "io.reactivex.rxjava3:rxandroid", version.ref = "rxandroid" }
+rxjava = { module = "io.reactivex.rxjava3:rxjava", version.ref = "rxjava" }
 security-crypto = { module = "androidx.security:security-crypto", version.ref = "securityCrypto" }
 sqlite = { module = "androidx.sqlite:sqlite", version.ref = "sqlite" }
 zxing-android-embedded = { module = "com.journeyapps:zxing-android-embedded", version.ref = "zxingAndroidEmbedded" }
