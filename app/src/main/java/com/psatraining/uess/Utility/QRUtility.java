@@ -6,6 +6,7 @@ import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.os.Build;
 import android.provider.Settings;
+import android.util.Log;
 import android.widget.ImageView;
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.EncodeHintType;
@@ -14,11 +15,18 @@ import com.google.zxing.WriterException;
 import com.google.zxing.common.BitMatrix;
 import com.journeyapps.barcodescanner.BarcodeEncoder;
 
-import java.util.Hashtable;
+import java.util.HashMap;
+import java.util.Map;
 
 public class QRUtility {
+    private static final String TAG = "QRUtility";
 
     public static void showDeviceQRCode(Context context, ImageView qrImageView) {
+        if (context == null || qrImageView == null) {
+            Log.e(TAG, "Context or ImageView is null");
+            return;
+        }
+
         // Get device info
         String deviceId = Settings.Secure.getString(context.getContentResolver(), Settings.Secure.ANDROID_ID);
         String deviceModel = Build.MODEL;
@@ -33,9 +41,32 @@ public class QRUtility {
 
         int size = 400; // width and height of QR
         try {
-            Bitmap qrBitmap = generateTransparentQRCode(context, qrContent, size); // <-- pass context here
-            qrImageView.setImageBitmap(qrBitmap);
+            // Try the more reliable BarcodeEncoder method first
+            try {
+                BarcodeEncoder barcodeEncoder = new BarcodeEncoder();
+                Map<EncodeHintType, Object> hints = new HashMap<>();
+                hints.put(EncodeHintType.MARGIN, 1);
+
+                BitMatrix matrix = new MultiFormatWriter().encode(
+                        qrContent,
+                        BarcodeFormat.QR_CODE,
+                        size,
+                        size,
+                        hints
+                );
+
+                Bitmap qrBitmap = barcodeEncoder.createBitmap(matrix);
+                qrImageView.setImageBitmap(qrBitmap);
+                Log.d(TAG, "QR code generated successfully with BarcodeEncoder");
+            } catch (Exception e) {
+                // Fall back to manual method if the first one fails
+                Log.w(TAG, "BarcodeEncoder failed, trying manual method: " + e.getMessage());
+                Bitmap qrBitmap = generateTransparentQRCode(context, qrContent, size);
+                qrImageView.setImageBitmap(qrBitmap);
+                Log.d(TAG, "QR code generated successfully with manual method");
+            }
         } catch (WriterException e) {
+            Log.e(TAG, "Failed to generate QR code: " + e.getMessage());
             e.printStackTrace();
         }
     }
@@ -45,7 +76,7 @@ public class QRUtility {
         int nightModeFlags = context.getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK;
         boolean isDarkMode = nightModeFlags == Configuration.UI_MODE_NIGHT_YES;
 
-        Hashtable<EncodeHintType, Object> hints = new Hashtable<>();
+        Map<EncodeHintType, Object> hints = new HashMap<>();
         hints.put(EncodeHintType.MARGIN, 1); // minimal margin
 
         BitMatrix bitMatrix = new MultiFormatWriter().encode(
@@ -54,17 +85,15 @@ public class QRUtility {
                 size, size, hints
         );
 
-        Bitmap bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888);
-        // Fill with transparent (optional, as default is transparent)
-        bitmap.eraseColor(Color.TRANSPARENT);
+        int width = bitMatrix.getWidth();
+        int height = bitMatrix.getHeight();
+        Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
 
-        for (int x = 0; x < size; x++) {
-            for (int y = 0; y < size; y++) {
-                if (bitMatrix.get(x, y)) {
-                    bitmap.setPixel(x, y, isDarkMode ? Color.WHITE : Color.BLACK);
-                } else {
-                    bitmap.setPixel(x, y, Color.TRANSPARENT);
-                }
+        for (int x = 0; x < width; x++) {
+            for (int y = 0; y < height; y++) {
+                bitmap.setPixel(x, y, bitMatrix.get(x, y) ?
+                        (isDarkMode ? Color.WHITE : Color.BLACK) :
+                        Color.TRANSPARENT);
             }
         }
         return bitmap;

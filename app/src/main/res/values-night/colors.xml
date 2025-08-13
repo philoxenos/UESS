@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <color name="qr_code_color_day">@android:color/white</color>
     <color name="divider">#FFFFFF</color>
     <color name="warning">#FF8A80</color>
     <color name="google_btn_text">#333333</color>
