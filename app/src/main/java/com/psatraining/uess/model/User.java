@@ -4,11 +4,13 @@ import androidx.annotation.NonNull;
 import androidx.room.Entity;
 import androidx.room.PrimaryKey;
 
+import java.io.Serializable;
+
 /**
  * Model class to represent a user in the application
  */
 @Entity(tableName = "users")
-public class User {
+public class User implements Serializable {
     
     @PrimaryKey
     @NonNull

@@ -23,5 +23,13 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        
+        <activity
+            android:name=".ForgotPasswordActivity"
+            android:exported="false" />
+            
+        <activity
+            android:name=".Homepage"
+            android:exported="false" />
     </application>
 </manifest>

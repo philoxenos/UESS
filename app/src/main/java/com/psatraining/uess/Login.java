@@ -22,6 +22,8 @@ import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
 import com.google.android.gms.common.api.ApiException;
 import com.google.android.gms.tasks.Task;
 import com.google.android.material.textfield.TextInputLayout;
+import com.psatraining.uess.api.LoginRequest;
+import com.psatraining.uess.api.RetrofitClient;
 import com.psatraining.uess.database.AppDatabase;
 import com.psatraining.uess.model.User;
 import com.psatraining.uess.Utility.CryptoHelper;
@@ -108,7 +110,54 @@ public class Login extends AppCompatActivity {
             return;
         }
         
-        // Check if email exists
+        // First try with backend server
+        try {
+            disposables.add(RetrofitClient.getApiService().loginUser(new LoginRequest(email, password))
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(
+                    response -> {
+                        // Login successful
+                        Toast.makeText(this, response.getMessage(), Toast.LENGTH_SHORT).show();
+                        User user = response.getUser();
+                        
+                        // Save or update user in local database for offline access
+                        User localUser = new User(
+                            user.getUserId(),
+                            user.getName(),
+                            user.getSurname(),
+                            user.getEmail(),
+                            CryptoHelper.hashPassword(password), // Store hashed password
+                            user.getCreatedAt()
+                        );
+                        
+                        disposables.add(database.userDao().insert(localUser)
+                            .subscribeOn(Schedulers.io())
+                            .subscribe(
+                                () -> Log.d(TAG, "User saved to local database"),
+                                throwable -> Log.e(TAG, "Error saving user to local database", throwable)
+                            )
+                        );
+                        
+                        redirectToMainApp(user);
+                    },
+                    throwable -> {
+                        Log.e(TAG, "Backend login failed, trying local database", throwable);
+                        // Backend failed, try local database as fallback
+                        tryLocalLogin(email, password);
+                    }
+                )
+            );
+        } catch (Exception e) {
+            Log.e(TAG, "Error connecting to backend", e);
+            // Connection issue, try local database
+            tryLocalLogin(email, password);
+        }
+    }
+    
+    // Try to login using local database as fallback
+    private void tryLocalLogin(String email, String password) {
+        // Check if email exists in local database
         disposables.add(database.userDao().getUserByEmail(email)
             .subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread())
@@ -118,8 +167,8 @@ public class Login extends AppCompatActivity {
                     String hashedPassword = CryptoHelper.hashPassword(password);
                     if (hashedPassword != null && hashedPassword.equals(user.getHashedPassword())) {
                         // Password matched, proceed to main app
-                        Toast.makeText(this, "Welcome back, " + user.getName(), Toast.LENGTH_SHORT).show();
-                        redirectToMainApp();
+                        Toast.makeText(this, "Welcome back, " + user.getName() + " (offline mode)", Toast.LENGTH_SHORT).show();
+                        redirectToMainApp(user);
                     } else {
                         // Password incorrect
                         Toast.makeText(this, "Incorrect password. Please try again.", Toast.LENGTH_SHORT).show();
@@ -167,6 +216,66 @@ public class Login extends AppCompatActivity {
             Toast.makeText(this, "Could not get email from Google account", Toast.LENGTH_SHORT).show();
             return;
         }
+
+        // First try with backend server
+        try {
+            User newUser = new User(
+                CryptoHelper.generateUserId(),
+                account.getGivenName() != null ? account.getGivenName() : "",
+                account.getFamilyName() != null ? account.getFamilyName() : "",
+                email,
+                "", // Password will be set by backend
+                System.currentTimeMillis()
+            );
+            
+            disposables.add(RetrofitClient.getApiService().registerUser(newUser)
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(
+                    user -> {
+                        // Registration successful or user already exists
+                        Toast.makeText(this, "Welcome, " + user.getName(), Toast.LENGTH_SHORT).show();
+                        
+                        // Save user to local database
+                        String randomPassword = CryptoHelper.generateUserId();
+                        String hashedPassword = CryptoHelper.hashPassword(randomPassword);
+                        
+                        User localUser = new User(
+                            user.getUserId(),
+                            user.getName(),
+                            user.getSurname(),
+                            user.getEmail(),
+                            hashedPassword,
+                            user.getCreatedAt()
+                        );
+                        
+                        disposables.add(database.userDao().insert(localUser)
+                            .subscribeOn(Schedulers.io())
+                            .subscribe(
+                                () -> Log.d(TAG, "Google user saved to local database"),
+                                throwable -> Log.e(TAG, "Error saving Google user to local database", throwable)
+                            )
+                        );
+                        
+                        redirectToMainApp(user);
+                    },
+                    throwable -> {
+                        Log.e(TAG, "Backend registration failed, trying local", throwable);
+                        // Backend failed, try local database
+                        checkGoogleUserLocally(account);
+                    }
+                )
+            );
+        } catch (Exception e) {
+            Log.e(TAG, "Error connecting to backend", e);
+            // Connection issue, try local database
+            checkGoogleUserLocally(account);
+        }
+    }
+    
+    // Check if Google user exists locally
+    private void checkGoogleUserLocally(GoogleSignInAccount account) {
+        String email = account.getEmail();
         
         // Check if user exists in database
         disposables.add(database.userDao().checkEmailExists(email)
@@ -181,14 +290,14 @@ public class Login extends AppCompatActivity {
                             .observeOn(AndroidSchedulers.mainThread())
                             .subscribe(
                                 user -> {
-                                    Toast.makeText(this, "Welcome back, " + user.getName(), Toast.LENGTH_SHORT).show();
-                                    redirectToMainApp();
+                                    Toast.makeText(this, "Welcome back, " + user.getName() + " (offline mode)", Toast.LENGTH_SHORT).show();
+                                    redirectToMainApp(user);
                                 },
                                 throwable -> Log.e(TAG, "Error getting user details", throwable)
                             )
                         );
                     } else {
-                        // New user, create account
+                        // New user, create account locally
                         createNewAccountFromGoogle(account);
                     }
                 },
@@ -229,7 +338,7 @@ public class Login extends AppCompatActivity {
             .subscribe(
                 () -> {
                     Toast.makeText(this, "Account created successfully!", Toast.LENGTH_SHORT).show();
-                    redirectToMainApp();
+                    redirectToMainApp(newUser);
                 },
                 throwable -> {
                     Log.e(TAG, "Error creating account", throwable);
@@ -241,48 +350,9 @@ public class Login extends AppCompatActivity {
     
     // Show dialog for forgot password flow
     private void showForgotPasswordDialog() {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        View dialogView = getLayoutInflater().inflate(R.layout.forgot_password_dialog, null);
-        builder.setView(dialogView);
-        
-        EditText emailField = dialogView.findViewById(R.id.email_edit_text);
-        Button resetButton = dialogView.findViewById(R.id.next_button);
-        
-        AlertDialog dialog = builder.create();
-        
-        // Set rounded corners
-        if (dialog.getWindow() != null) {
-            dialog.getWindow().setBackgroundDrawableResource(R.drawable.dialog_background);
-        }
-        
-        resetButton.setOnClickListener(v -> {
-            String email = emailField.getText().toString().trim();
-            if (email.isEmpty()) {
-                Toast.makeText(this, "Please enter your email", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            
-            // Check if email exists in database
-            disposables.add(database.userDao().checkEmailExists(email)
-                .subscribeOn(Schedulers.io())
-                .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(
-                    count -> {
-                        if (count > 0) {
-                            // Email found, show TOTP input dialog
-                            dialog.dismiss();
-                            showTOTPDialog(email);
-                        } else {
-                            // Email not found
-                            Toast.makeText(this, "Email not found", Toast.LENGTH_SHORT).show();
-                        }
-                    },
-                    throwable -> Log.e(TAG, "Error checking email", throwable)
-                )
-            );
-        });
-        
-        dialog.show();
+        // Launch the Forgot Password Activity instead of using a dialog
+        Intent intent = new Intent(this, ForgotPasswordActivity.class);
+        startActivity(intent);
     }
     
     // Show dialog for TOTP verification
@@ -374,10 +444,12 @@ public class Login extends AppCompatActivity {
     }
     
     // Redirect to main app after successful authentication
-    private void redirectToMainApp() {
-        // In a real app, you would start your main activity here
-        // For now, just show a toast
-        Toast.makeText(this, "Redirecting to main app...", Toast.LENGTH_SHORT).show();
+    private void redirectToMainApp(User user) {
+        // Launch the Homepage activity with user data
+        Intent intent = new Intent(this, Homepage.class);
+        intent.putExtra("user", user);
+        startActivity(intent);
+        finish(); // Close login activity
     }
     
     @Override
