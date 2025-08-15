@@ -1,8 +1,6 @@
 package com.psatraining.uess.Utility;
 
 import android.content.Context;
-import android.security.keystore.KeyGenParameterSpec;
-import android.security.keystore.KeyProperties;
 import android.util.Base64;
 
 import androidx.security.crypto.EncryptedSharedPreferences;
@@ -12,9 +10,8 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
-import java.util.UUID;
 
-public class CryptoHelper {
+public class SQLCipherUtility {
     
     private static final String SHARED_PREF_FILENAME = "uess_secure_prefs";
     private static final String DATABASE_KEY = "database_encryption_key";
@@ -66,38 +63,5 @@ public class CryptoHelper {
             byte[] fallbackKey = "TEMPORARY_FALLBACK_KEY_NOT_SECURE".getBytes(StandardCharsets.UTF_8);
             return fallbackKey;
         }
-    }
-    
-    /**
-     * Hash a password using SHA-256
-     * @param password Raw password to hash
-     * @return Hashed password string
-     */
-    public static String hashPassword(String password) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hash = digest.digest(password.getBytes(StandardCharsets.UTF_8));
-            
-            // Convert to hex string
-            StringBuilder hexString = new StringBuilder();
-            for (byte b : hash) {
-                String hex = Integer.toHexString(0xff & b);
-                if (hex.length() == 1) hexString.append('0');
-                hexString.append(hex);
-            }
-            
-            return hexString.toString();
-        } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
-            return null;
-        }
-    }
-    
-    /**
-     * Generate a unique user ID
-     * @return UUID as string
-     */
-    public static String generateUserId() {
-        return UUID.randomUUID().toString();
     }
 }

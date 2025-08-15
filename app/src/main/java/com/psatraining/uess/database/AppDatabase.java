@@ -2,14 +2,12 @@ package com.psatraining.uess.database;
 
 import android.content.Context;
 
-import androidx.annotation.NonNull;
 import androidx.room.Database;
 import androidx.room.Room;
 import androidx.room.RoomDatabase;
-import androidx.sqlite.db.SupportSQLiteDatabase;
 
 import com.psatraining.uess.model.User;
-import com.psatraining.uess.Utility.CryptoHelper;
+import com.psatraining.uess.Utility.SQLCipherUtility;
 
 import net.sqlcipher.database.SupportFactory;
 
@@ -23,7 +21,7 @@ public abstract class AppDatabase extends RoomDatabase {
     public static synchronized AppDatabase getInstance(Context context) {
         if (instance == null) {
             // Get encryption key
-            byte[] passphrase = CryptoHelper.getOrCreateDatabaseKey(context);
+            byte[] passphrase = SQLCipherUtility.getOrCreateDatabaseKey(context);
             
             // Use SQLCipher to encrypt the database
             SupportFactory factory = new SupportFactory(passphrase);
