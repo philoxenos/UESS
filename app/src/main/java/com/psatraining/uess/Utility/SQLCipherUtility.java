@@ -14,7 +14,7 @@ import java.security.SecureRandom;
 public class SQLCipherUtility {
     
     private static final String SHARED_PREF_FILENAME = "uess_secure_prefs";
-    private static final String DATABASE_KEY = "database_encryption_key";
+    private static final String DATABASE_KEY = "G3rmf1ght";
     
     /**
      * Get or create the database encryption key

@@ -29,7 +29,6 @@ public abstract class AppDatabase extends RoomDatabase {
             instance = Room.databaseBuilder(context.getApplicationContext(),
                             AppDatabase.class, "uess_database")
                     .openHelperFactory(factory)
-                    .fallbackToDestructiveMigration()
                     .build();
         }
         return instance;

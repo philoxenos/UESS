@@ -20,16 +20,18 @@ public class User implements Serializable {
     private String surname;
     private String email;
     private String hashedPassword;
+    private String role;
     private long createdAt;
 
     public User() {
     }
 
-    public User(String userId, String name, String surname, String email, String hashedPassword, long createdAt) {
+    public User(String userId, String name, String surname, String email, String role, String hashedPassword, long createdAt) {
         this.userId = userId;
         this.name = name;
         this.surname = surname;
         this.email = email;
+        this.role = role;
         this.hashedPassword = hashedPassword;
         this.createdAt = createdAt;
     }
@@ -64,6 +66,14 @@ public class User implements Serializable {
 
     public void setEmail(String email) {
         this.email = email;
+    }
+
+    public String getRole() {
+        return role;
+    }
+
+    public void setRole(String role) {
+        this.role = role;
     }
 
     public String getHashedPassword() {
