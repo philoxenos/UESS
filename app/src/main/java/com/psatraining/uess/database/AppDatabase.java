@@ -20,16 +20,36 @@ public abstract class AppDatabase extends RoomDatabase {
     
     public static synchronized AppDatabase getInstance(Context context) {
         if (instance == null) {
-            // Get encryption key
-            byte[] passphrase = SQLCipherUtility.getOrCreateDatabaseKey(context);
-            
-            // Use SQLCipher to encrypt the database
-            SupportFactory factory = new SupportFactory(passphrase);
-            
-            instance = Room.databaseBuilder(context.getApplicationContext(),
-                            AppDatabase.class, "uess_database")
-                    .openHelperFactory(factory)
-                    .build();
+            try {
+                // Get encryption key
+                byte[] passphrase = SQLCipherUtility.getOrCreateDatabaseKey(context);
+                
+                // Use SQLCipher to encrypt the database
+                SupportFactory factory = new SupportFactory(passphrase);
+                
+                instance = Room.databaseBuilder(context.getApplicationContext(),
+                                AppDatabase.class, "uess_database")
+                        .openHelperFactory(factory)
+                        // Allow queries on main thread for simplicity (not recommended for production)
+                        .allowMainThreadQueries()
+                        // Force destructive migration when schema changes - for development only
+                        .fallbackToDestructiveMigration()
+                        .build();
+            } catch (Exception e) {
+                // Log the error
+                android.util.Log.e("AppDatabase", "Error initializing database", e);
+                
+                // Try without encryption as fallback
+                try {
+                    instance = Room.databaseBuilder(context.getApplicationContext(),
+                                    AppDatabase.class, "uess_database_unencrypted")
+                            .allowMainThreadQueries()
+                            .fallbackToDestructiveMigration()
+                            .build();
+                } catch (Exception e2) {
+                    android.util.Log.e("AppDatabase", "Failed to create unencrypted database", e2);
+                }
+            }
         }
         return instance;
     }

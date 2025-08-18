@@ -25,6 +25,7 @@ public class AuthResponse {
         private String surname;
         private String createdAt;
         private String role;
+        private String password;
 
         public String getEmail() {
             return email;
@@ -44,6 +45,10 @@ public class AuthResponse {
 
         public String getRole() {
             return role;
+        }
+        
+        public String getPassword() {
+            return password;
         }
     }
 }

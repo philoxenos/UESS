@@ -1,9 +1,9 @@
 <resources>
     <string name="app_name">UESS</string>
-    
+
     <!-- Google Sign-In Configuration -->
     <string name="google_client_id">904774983485-9adk2aujuhujjo62eklp0rfe12osgdu7.apps.googleusercontent.com</string>
-    
+
     <!-- Authentication strings -->
     <string name="login_email_hint">Email address</string>
     <string name="login_password_hint">Password</string>
