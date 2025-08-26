@@ -22,15 +22,12 @@ import com.google.android.gms.auth.api.identity.SignInClient;
 import com.google.android.gms.auth.api.identity.SignInCredential;
 import com.google.android.gms.common.api.ApiException;
 import com.google.android.material.textfield.TextInputEditText;
-import com.google.android.material.textfield.TextInputLayout;
 import com.psatraining.uess.Utility.PasswordHasherUtility;
 import com.psatraining.uess.api.AuthService;
 import com.psatraining.uess.api.RetrofitClient;
 import com.psatraining.uess.database.AppDatabase;
 import com.psatraining.uess.model.AuthRequest;
 import com.psatraining.uess.model.AuthResponse;
-import com.psatraining.uess.model.UpdateUserRequest;
-import com.psatraining.uess.model.UpdateUserResponse;
 import com.psatraining.uess.Utility.QRUtility;
 import com.psatraining.uess.model.User;
 
@@ -48,6 +45,7 @@ public class Login extends AppCompatActivity {
     private SignInClient signInClient;
     private BeginSignInRequest beginSignInRequest;
     private static final int REQ_ONE_TAP = 100;
+    private static final int REQ_PASSWORD_RESET = 101;
     
     // Database reference
     private AppDatabase database;
@@ -111,8 +109,8 @@ public class Login extends AppCompatActivity {
         });
         googleSignInButton.setOnClickListener(this::buttonGoogleSignIn);
         forgotPasswordLink.setOnClickListener(v -> {
-            // Simply redirect to login page for now
-            Toast.makeText(Login.this, "Please use Google Sign-In to verify your email", Toast.LENGTH_LONG).show();
+            // Start password reset flow
+            initiatePasswordReset();
         });
 
 
@@ -193,6 +191,20 @@ public class Login extends AppCompatActivity {
             } catch (ApiException e) {
                 Log.e(TAG, "Error getting sign-in credentials: " + e.getMessage(), e);
                 Toast.makeText(this, "Authentication failed: " + e.getLocalizedMessage(), Toast.LENGTH_SHORT).show();
+            }
+        } else if (requestCode == REQ_PASSWORD_RESET) {
+            try {
+                SignInCredential credential = signInClient.getSignInCredentialFromIntent(data);
+                String email = credential.getId();
+
+                if (email != null) {
+                    // Got email for password reset. Check in local database first
+                    Log.d(TAG, "Got email for password reset: " + email);
+                    checkEmailForPasswordReset(email);
+                }
+            } catch (ApiException e) {
+                Log.e(TAG, "Error getting email for password reset: " + e.getMessage(), e);
+                Toast.makeText(this, "Failed to get email: " + e.getLocalizedMessage(), Toast.LENGTH_SHORT).show();
             }
         }
     }
@@ -719,6 +731,375 @@ public class Login extends AppCompatActivity {
             
             @Override
             public void onFailure(Call<AuthResponse> call, Throwable t) {
+                Toast.makeText(Login.this, "Network error. Please check your connection.", Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    /**
+     * Initiates the password reset flow by showing Google email selection
+     */
+    private void initiatePasswordReset() {
+        signInClient.beginSignIn(beginSignInRequest)
+                .addOnSuccessListener(this, result -> {
+                    try {
+                        startIntentSenderForResult(
+                                result.getPendingIntent().getIntentSender(), REQ_PASSWORD_RESET,
+                                null, 0, 0, 0);
+                    } catch (IntentSender.SendIntentException e) {
+                        Log.e(TAG, "Couldn't start email selection for password reset: " + e.getLocalizedMessage());
+                        Toast.makeText(Login.this, "Failed to show email selection", Toast.LENGTH_SHORT).show();
+                    }
+                })
+                .addOnFailureListener(this, e -> {
+                    String errorMessage = e.getLocalizedMessage();
+                    Log.d(TAG, "Email selection for password reset failed: " + errorMessage);
+                    Toast.makeText(Login.this, "Email selection failed: " + errorMessage, Toast.LENGTH_LONG).show();
+                });
+    }
+
+    /**
+     * Checks if the selected email exists for password reset
+     * @param email The email selected for password reset
+     */
+    @SuppressLint("CheckResult")
+    private void checkEmailForPasswordReset(String email) {
+        // Show loading dialog
+        AlertDialog.Builder loadingBuilder = new AlertDialog.Builder(this);
+        loadingBuilder.setTitle("Checking Email");
+        loadingBuilder.setMessage("Please wait...");
+        loadingBuilder.setCancelable(false);
+        AlertDialog loadingDialog = loadingBuilder.create();
+        loadingDialog.show();
+        
+        try {
+            // Initialize database if not already initialized
+            if (database == null) {
+                database = AppDatabase.getInstance(getApplicationContext());
+            }
+            
+            if (database == null) {
+                // Database initialization failed, proceed with backend check
+                loadingDialog.dismiss();
+                checkEmailWithBackendForReset(email);
+                return;
+            }
+            
+            try {
+                // Query the database for the user
+                database.userDao().getUserByEmail(email)
+                    .subscribe(
+                        user -> {
+                            loadingDialog.dismiss();
+                            
+                            if (user != null) {
+                                // User exists locally, show reset password dialog
+                                Log.d(TAG, "User exists locally, showing reset password dialog");
+                                Toast.makeText(Login.this, "Email found! Please set your new password.", Toast.LENGTH_SHORT).show();
+                                showResetPasswordDialog(email);
+                            } else {
+                                // User doesn't exist locally, check with backend
+                                Log.d(TAG, "User not found locally for password reset, checking with backend");
+                                checkEmailWithBackendForReset(email);
+                            }
+                        },
+                        error -> {
+                            loadingDialog.dismiss();
+                            Log.e(TAG, "Database error during email check for reset", error);
+                            // On database error, fallback to backend check
+                            checkEmailWithBackendForReset(email);
+                        },
+                        () -> {
+                            // No user found locally, check with backend
+                            loadingDialog.dismiss();
+                            Log.d(TAG, "User not found locally for password reset (onComplete), checking with backend");
+                            checkEmailWithBackendForReset(email);
+                        }
+                    );
+            } catch (Exception e) {
+                loadingDialog.dismiss();
+                Log.e(TAG, "Error querying local database for password reset", e);
+                // On error, fallback to backend check
+                checkEmailWithBackendForReset(email);
+            }
+        } catch (Exception e) {
+            loadingDialog.dismiss();
+            Log.e(TAG, "Error in checkEmailForPasswordReset", e);
+            // On error, fallback to backend check
+            checkEmailWithBackendForReset(email);
+        }
+    }
+
+    /**
+     * Checks if the email exists in the backend for password reset
+     * @param email The email to check
+     */
+    private void checkEmailWithBackendForReset(String email) {
+        // Create authentication request to check if email exists
+        AuthRequest checkRequest = new AuthRequest(email, "", "", 
+                new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).format(new Date()));
+        
+        AuthService authService = RetrofitClient.getClient().create(AuthService.class);
+        Call<AuthResponse> checkCall = authService.authenticateUser(checkRequest);
+        
+        checkCall.enqueue(new Callback<AuthResponse>() {
+            @Override
+            public void onResponse(Call<AuthResponse> call, Response<AuthResponse> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    AuthResponse authResponse = response.body();
+                    
+                    if ("success".equals(authResponse.getStatus()) && authResponse.isExists()) {
+                        // User exists in backend, show reset password dialog
+                        Log.d(TAG, "User exists in backend for password reset, showing reset dialog");
+                        Toast.makeText(Login.this, "Email verified! Please set your new password.", Toast.LENGTH_SHORT).show();
+                        showResetPasswordDialog(email);
+                    } else {
+                        // User doesn't exist in backend
+                        Log.d(TAG, "User doesn't exist in backend for password reset");
+                        AlertDialog.Builder builder = new AlertDialog.Builder(Login.this);
+                        builder.setTitle("Email Not Found")
+                               .setMessage("The email " + email + " is not registered in the system. Please contact an administrator.")
+                               .setPositiveButton("OK", null)
+                               .show();
+                    }
+                } else {
+                    // Handle unsuccessful response
+                    String errorMessage = "Server error: ";
+                    if (response.code() == 500) {
+                        errorMessage += "Internal server error. Please contact administrator.";
+                    } else if (response.code() == 404) {
+                        errorMessage += "Server endpoint not found. Please check server configuration.";
+                    } else {
+                        errorMessage += response.code() + " " + response.message();
+                    }
+                    
+                    AlertDialog.Builder builder = new AlertDialog.Builder(Login.this);
+                    builder.setTitle("Server Error")
+                           .setMessage(errorMessage)
+                           .setPositiveButton("OK", null)
+                           .show();
+                    
+                    Log.e(TAG, "Server error during password reset: " + response.code() + " " + response.message());
+                }
+            }
+            
+            @Override
+            public void onFailure(Call<AuthResponse> call, Throwable t) {
+                // Handle network failure with more detailed error message
+                Log.e(TAG, "Network error during password reset", t);
+                
+                String errorMessage = "Cannot connect to the authentication server. ";
+                
+                // Provide more specific error message based on the exception
+                if (t instanceof java.net.ConnectException || t instanceof java.net.SocketTimeoutException) {
+                    errorMessage += "Server is offline or unreachable. Please check your network connection or contact the administrator.";
+                } else if (t instanceof java.net.UnknownHostException) {
+                    errorMessage += "Server address not found. Please check your network connection.";
+                } else {
+                    errorMessage += t.getMessage();
+                }
+                
+                AlertDialog.Builder builder = new AlertDialog.Builder(Login.this);
+                builder.setTitle("Connection Error")
+                       .setMessage(errorMessage)
+                       .setPositiveButton("OK", null)
+                       .show();
+            }
+        });
+    }
+
+    /**
+     * Shows the reset password dialog
+     * @param email The email for which to reset password
+     */
+    private void showResetPasswordDialog(String email) {
+        // Create the dialog
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        View dialogView = getLayoutInflater().inflate(R.layout.reset_password_dialog, null);
+        builder.setView(dialogView);
+        
+        // Find the views in the dialog
+        TextInputEditText newPasswordEditText = dialogView.findViewById(R.id.new_password_edit_text);
+        TextInputEditText confirmPasswordEditText = dialogView.findViewById(R.id.confirm_password_edit_text);
+        Button resetButton = dialogView.findViewById(R.id.reset_button);
+        
+        // Create the dialog
+        AlertDialog dialog = builder.create();
+        
+        // Make the dialog rounded corners
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawableResource(R.drawable.dialog_background);
+        }
+        
+        // Set up the reset button click listener
+        resetButton.setOnClickListener(v -> {
+            String newPassword = newPasswordEditText.getText().toString().trim();
+            String confirmPassword = confirmPasswordEditText.getText().toString().trim();
+            
+            // Validate passwords
+            if (TextUtils.isEmpty(newPassword)) {
+                newPasswordEditText.setError("New password is required");
+                return;
+            }
+            
+            if (newPassword.length() < 6) {
+                newPasswordEditText.setError("Password must be at least 6 characters");
+                return;
+            }
+            
+            if (!newPassword.equals(confirmPassword)) {
+                confirmPasswordEditText.setError("Passwords do not match");
+                return;
+            }
+            
+            // Hash the new password
+            String hashedPassword = PasswordHasherUtility.hashPassword(newPassword);
+            
+            // Save the new password to local database
+            saveResetPasswordToLocalDatabase(email, hashedPassword, dialog);
+        });
+        
+        dialog.show();
+    }
+
+    /**
+     * Saves the reset password to local database
+     * @param email The user's email
+     * @param hashedPassword The new hashed password
+     * @param dialog The dialog to dismiss
+     */
+    @SuppressLint("CheckResult")
+    private void saveResetPasswordToLocalDatabase(String email, String hashedPassword, AlertDialog dialog) {
+        try {
+            // Initialize database if not already initialized
+            if (database == null) {
+                database = AppDatabase.getInstance(getApplicationContext());
+            }
+            
+            if (database == null) {
+                dialog.dismiss();
+                Toast.makeText(Login.this, "Database error. Please try again.", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            
+            try {
+                // First check if user exists locally
+                database.userDao().getUserByEmail(email)
+                    .subscribe(
+                        user -> {
+                            if (user != null) {
+                                // User exists locally, update password
+                                database.userDao().updatePassword(email, hashedPassword)
+                                    .subscribe(
+                                        () -> {
+                                            dialog.dismiss();
+                                            Toast.makeText(Login.this, "Password reset successfully!", Toast.LENGTH_SHORT).show();
+                                            Log.d(TAG, "Password reset successfully for local user: " + email);
+                                        },
+                                        error -> {
+                                            dialog.dismiss();
+                                            Toast.makeText(Login.this, "Error updating password: " + error.getMessage(), 
+                                                          Toast.LENGTH_SHORT).show();
+                                            Log.e(TAG, "Database error updating password", error);
+                                        }
+                                    );
+                            } else {
+                                // User doesn't exist locally, need to fetch from backend first
+                                fetchUserDetailsAndSavePasswordReset(email, hashedPassword, dialog);
+                            }
+                        },
+                        error -> {
+                            Log.e(TAG, "Database error checking user for password reset", error);
+                            // Try to fetch from backend
+                            fetchUserDetailsAndSavePasswordReset(email, hashedPassword, dialog);
+                        },
+                        () -> {
+                            // No user found locally, fetch from backend
+                            fetchUserDetailsAndSavePasswordReset(email, hashedPassword, dialog);
+                        }
+                    );
+            } catch (Exception e) {
+                dialog.dismiss();
+                Log.e(TAG, "Error in saveResetPasswordToLocalDatabase", e);
+                Toast.makeText(Login.this, "Database error. Please try again.", Toast.LENGTH_SHORT).show();
+            }
+        } catch (Exception e) {
+            dialog.dismiss();
+            Log.e(TAG, "Error initializing database for password reset", e);
+            Toast.makeText(Login.this, "Database error. Please try again.", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    /**
+     * Fetches user details from backend and saves with new password to local database
+     * @param email The user's email
+     * @param hashedPassword The new hashed password
+     * @param dialog The dialog to dismiss
+     */
+    private void fetchUserDetailsAndSavePasswordReset(String email, String hashedPassword, AlertDialog dialog) {
+        // Create authentication request to get user details
+        AuthRequest checkRequest = new AuthRequest(email, "", "", 
+                new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).format(new Date()));
+        
+        AuthService authService = RetrofitClient.getClient().create(AuthService.class);
+        Call<AuthResponse> checkCall = authService.authenticateUser(checkRequest);
+        
+        checkCall.enqueue(new Callback<AuthResponse>() {
+            @SuppressLint("CheckResult")
+            @Override
+            public void onResponse(Call<AuthResponse> call, Response<AuthResponse> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    AuthResponse authResponse = response.body();
+                    
+                    if ("success".equals(authResponse.getStatus()) && authResponse.isExists() 
+                            && authResponse.getUser() != null) {
+                        // Get user details from response
+                        AuthResponse.User backendUser = authResponse.getUser();
+                        
+                        // Initialize database if not already initialized
+                        if (database == null) {
+                            database = AppDatabase.getInstance(getApplicationContext());
+                        }
+                        
+                        // Create User object for local database with new password
+                        User localUser = new User(
+                                UUID.randomUUID().toString(), // Generate a unique ID
+                                backendUser.getName() != null ? backendUser.getName() : "",
+                                backendUser.getSurname() != null ? backendUser.getSurname() : "",
+                                email,
+                                backendUser.getRole() != null ? backendUser.getRole() : "user",
+                                hashedPassword, // Use the new hashed password
+                                System.currentTimeMillis() // Current timestamp
+                        );
+                        
+                        // Save to local database
+                        database.userDao().insert(localUser)
+                            .subscribe(
+                                () -> {
+                                    dialog.dismiss();
+                                    Toast.makeText(Login.this, "Password reset successfully!", Toast.LENGTH_SHORT).show();
+                                    Log.d(TAG, "Password reset successfully for new local user: " + email);
+                                },
+                                error -> {
+                                    dialog.dismiss();
+                                    Toast.makeText(Login.this, "Error saving password reset to local database: " + error.getMessage(), 
+                                                  Toast.LENGTH_SHORT).show();
+                                    Log.e(TAG, "Database error during password reset save", error);
+                                }
+                            );
+                    } else {
+                        dialog.dismiss();
+                        Toast.makeText(Login.this, "Failed to get user details from server", Toast.LENGTH_SHORT).show();
+                    }
+                } else {
+                    dialog.dismiss();
+                    Toast.makeText(Login.this, "Server error retrieving user data", Toast.LENGTH_SHORT).show();
+                }
+            }
+            
+            @Override
+            public void onFailure(Call<AuthResponse> call, Throwable t) {
+                dialog.dismiss();
                 Toast.makeText(Login.this, "Network error. Please check your connection.", Toast.LENGTH_SHORT).show();
             }
         });
