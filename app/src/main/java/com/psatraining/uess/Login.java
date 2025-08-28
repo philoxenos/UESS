@@ -210,77 +210,10 @@ public class Login extends AppCompatActivity {
     }
     
     private void authenticateUser(AuthRequest authRequest) {
-        // First check if user exists in local database before making backend call
-        checkUserLocallyFirst(authRequest);
+        // Directly authenticate with backend instead of checking local database first
+        authenticateWithBackend(authRequest);
     }
     
-    @SuppressLint("CheckResult")
-    private void checkUserLocallyFirst(AuthRequest authRequest) {
-        // Show loading dialog
-        AlertDialog.Builder loadingBuilder = new AlertDialog.Builder(this);
-        loadingBuilder.setTitle("Checking User");
-        loadingBuilder.setMessage("Please wait...");
-        loadingBuilder.setCancelable(false);
-        AlertDialog loadingDialog = loadingBuilder.create();
-        loadingDialog.show();
-        
-        try {
-            // Initialize database if not already initialized
-            if (database == null) {
-                database = AppDatabase.getInstance(getApplicationContext());
-            }
-            
-            if (database == null) {
-                // Database initialization failed, proceed with backend check
-                loadingDialog.dismiss();
-                authenticateWithBackend(authRequest);
-                return;
-            }
-            
-            try {
-                // Query the database for the user
-                database.userDao().getUserByEmail(authRequest.getEmail())
-                    .subscribe(
-                        user -> {
-                            loadingDialog.dismiss();
-                            
-                            if (user != null) {
-                                // User exists locally, show password login dialog
-                                Log.d(TAG, "User exists locally, showing password login dialog");
-                                Toast.makeText(Login.this, "Welcome back! Please enter your password.", Toast.LENGTH_SHORT).show();
-                                showPasswordLoginDialog(authRequest.getEmail());
-                            } else {
-                                // User doesn't exist locally, check with backend
-                                Log.d(TAG, "User not found locally, checking with backend");
-                                authenticateWithBackend(authRequest);
-                            }
-                        },
-                        error -> {
-                            loadingDialog.dismiss();
-                            Log.e(TAG, "Database error during local check", error);
-                            // On database error, fallback to backend check
-                            authenticateWithBackend(authRequest);
-                        },
-                        () -> {
-                            // No user found locally, check with backend
-                            loadingDialog.dismiss();
-                            Log.d(TAG, "User not found locally (onComplete), checking with backend");
-                            authenticateWithBackend(authRequest);
-                        }
-                    );
-            } catch (Exception e) {
-                loadingDialog.dismiss();
-                Log.e(TAG, "Error querying local database", e);
-                // On error, fallback to backend check
-                authenticateWithBackend(authRequest);
-            }
-        } catch (Exception e) {
-            loadingDialog.dismiss();
-            Log.e(TAG, "Error in checkUserLocallyFirst", e);
-            // On error, fallback to backend check
-            authenticateWithBackend(authRequest);
-        }
-    }
     
     private void authenticateWithBackend(AuthRequest authRequest) {
         AuthService authService = RetrofitClient.getClient().create(AuthService.class);
@@ -294,10 +227,9 @@ public class Login extends AppCompatActivity {
                     
                     if ("success".equals(authResponse.getStatus())) {
                         if (authResponse.isExists()) {
-                            // User exists in the backend, show password setup dialog for new users
-                            Log.d(TAG, "User exists in backend, showing password setup dialog");
-                            Toast.makeText(Login.this, "Email verified. Please set up your password.", Toast.LENGTH_SHORT).show();
-                            showPasswordRegistrationDialog(authRequest.getEmail());
+                            // User exists in the backend, now check if they exist locally
+                            Log.d(TAG, "User exists in backend, checking local database");
+                            checkUserLocallyAfterBackendAuth(authRequest.getEmail());
                         } else {
                             // User doesn't exist, show error message
                             Log.d(TAG, "User doesn't exist in backend");
@@ -334,27 +266,93 @@ public class Login extends AppCompatActivity {
             
             @Override
             public void onFailure(Call<AuthResponse> call, Throwable t) {
-                // Handle network failure with more detailed error message
+                // Handle network failure - show specific message for Google sign-in requiring internet
                 Log.e(TAG, "Network error", t);
                 
-                String errorMessage = "Cannot connect to the authentication server. ";
-                
-                // Provide more specific error message based on the exception
-                if (t instanceof java.net.ConnectException || t instanceof java.net.SocketTimeoutException) {
-                    errorMessage += "Server is offline or unreachable. Please check your network connection or contact the administrator.";
-                } else if (t instanceof java.net.UnknownHostException) {
-                    errorMessage += "Server address not found. Please check your network connection.";
-                } else {
-                    errorMessage += t.getMessage();
-                }
-                
                 AlertDialog.Builder builder = new AlertDialog.Builder(Login.this);
-                builder.setTitle("Connection Error")
-                       .setMessage(errorMessage)
+                builder.setTitle("Internet Connection Required")
+                       .setMessage("You need an internet connection to sign in with Google. Please check your connection and try again.")
                        .setPositiveButton("OK", null)
                        .show();
             }
         });
+    }
+    
+    @SuppressLint("CheckResult")
+    private void checkUserLocallyAfterBackendAuth(String email) {
+        // Show loading dialog
+        AlertDialog.Builder loadingBuilder = new AlertDialog.Builder(this);
+        loadingBuilder.setTitle("Checking Account");
+        loadingBuilder.setMessage("Please wait...");
+        loadingBuilder.setCancelable(false);
+        AlertDialog loadingDialog = loadingBuilder.create();
+        loadingDialog.show();
+        
+        try {
+            // Initialize database if not already initialized
+            if (database == null) {
+                database = AppDatabase.getInstance(getApplicationContext());
+            }
+            
+            if (database == null) {
+                // Database initialization failed, show password setup dialog
+                loadingDialog.dismiss();
+                Log.d(TAG, "Database initialization failed, showing password setup dialog");
+                Toast.makeText(Login.this, "Email verified. Please set up your password.", Toast.LENGTH_SHORT).show();
+                showPasswordRegistrationDialog(email);
+                return;
+            }
+            
+            try {
+                // Query the database for the user
+                database.userDao().getUserByEmail(email)
+                    .subscribe(
+                        user -> {
+                            loadingDialog.dismiss();
+                            
+                            if (user != null) {
+                                // User exists locally with password, proceed to dashboard
+                                Log.d(TAG, "User exists locally, proceeding to dashboard");
+                                Toast.makeText(Login.this, "Welcome back!", Toast.LENGTH_SHORT).show();
+                                Intent intent = new Intent(Login.this, Homepage.class);
+                                startActivity(intent);
+                                finish();
+                            } else {
+                                // User doesn't exist locally, show password setup dialog
+                                Log.d(TAG, "User not found locally, showing password setup dialog");
+                                Toast.makeText(Login.this, "Email verified. Please set up your password.", Toast.LENGTH_SHORT).show();
+                                showPasswordRegistrationDialog(email);
+                            }
+                        },
+                        error -> {
+                            loadingDialog.dismiss();
+                            Log.e(TAG, "Database error during local check after backend auth", error);
+                            // On database error, fallback to password setup
+                            Toast.makeText(Login.this, "Email verified. Please set up your password.", Toast.LENGTH_SHORT).show();
+                            showPasswordRegistrationDialog(email);
+                        },
+                        () -> {
+                            // No user found locally, show password setup dialog
+                            loadingDialog.dismiss();
+                            Log.d(TAG, "User not found locally (onComplete), showing password setup dialog");
+                            Toast.makeText(Login.this, "Email verified. Please set up your password.", Toast.LENGTH_SHORT).show();
+                            showPasswordRegistrationDialog(email);
+                        }
+                    );
+            } catch (Exception e) {
+                loadingDialog.dismiss();
+                Log.e(TAG, "Error querying local database after backend auth", e);
+                // On error, fallback to password setup
+                Toast.makeText(Login.this, "Email verified. Please set up your password.", Toast.LENGTH_SHORT).show();
+                showPasswordRegistrationDialog(email);
+            }
+        } catch (Exception e) {
+            loadingDialog.dismiss();
+            Log.e(TAG, "Error in checkUserLocallyAfterBackendAuth", e);
+            // On error, fallback to password setup
+            Toast.makeText(Login.this, "Email verified. Please set up your password.", Toast.LENGTH_SHORT).show();
+            showPasswordRegistrationDialog(email);
+        }
     }
     
     private void showPasswordLoginDialog(String email) {
