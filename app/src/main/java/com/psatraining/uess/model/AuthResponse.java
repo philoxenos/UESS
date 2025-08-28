@@ -1,7 +1,5 @@
 package com.psatraining.uess.model;
 
-import com.google.gson.annotations.SerializedName;
-
 public class AuthResponse {
     private String status;
     private boolean exists;
@@ -25,7 +23,6 @@ public class AuthResponse {
         private String surname;
         private String createdAt;
         private String role;
-        private String password;
 
         public String getEmail() {
             return email;
@@ -39,16 +36,10 @@ public class AuthResponse {
             return surname;
         }
 
-        public String getCreatedAt() {
-            return createdAt;
-        }
-
         public String getRole() {
             return role;
         }
-        
-        public String getPassword() {
-            return password;
-        }
+
+        // getCreatedAt() removed - never used in the codebase
     }
 }

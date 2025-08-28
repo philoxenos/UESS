@@ -3,7 +3,8 @@
     <color name="qr_code_color_day">@android:color/black</color>
     <color name="divider">#000000</color>
     <color name="warning">#F44336</color>
-    <color name="google_btn_text">#333333</color>
     <color name="white">#FFFFFF</color>
+    <color name="google_btn_text">#333333</color>
+    <color name="textDivider">#FFFFFF</color>
     <color name="title_text">#222222</color>
 </resources>

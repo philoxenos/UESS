@@ -2,6 +2,7 @@ package com.psatraining.uess.model;
 
 import androidx.annotation.NonNull;
 import androidx.room.Entity;
+import androidx.room.Ignore;
 import androidx.room.PrimaryKey;
 
 import java.io.Serializable;
@@ -23,6 +24,7 @@ public class User implements Serializable {
     private String role;
     private long createdAt;
 
+    @Ignore
     public User() {
     }
 

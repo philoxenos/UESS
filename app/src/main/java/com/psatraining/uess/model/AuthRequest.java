@@ -13,36 +13,21 @@ public class AuthRequest {
         this.createdAt = createdAt;
     }
 
-    // Getters and setters
+    // Only getEmail() is actually used in the codebase
     public String getEmail() {
         return email;
     }
 
-    public void setEmail(String email) {
-        this.email = email;
-    }
-
+    // These getters are kept for JSON serialization by Retrofit
     public String getName() {
         return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
     }
 
     public String getSurname() {
         return surname;
     }
 
-    public void setSurname(String surname) {
-        this.surname = surname;
-    }
-
     public String getCreatedAt() {
         return createdAt;
-    }
-
-    public void setCreatedAt(String createdAt) {
-        this.createdAt = createdAt;
     }
 }

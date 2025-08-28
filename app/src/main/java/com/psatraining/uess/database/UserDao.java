@@ -8,7 +8,6 @@ import com.psatraining.uess.model.User;
 
 import io.reactivex.rxjava3.core.Completable;
 import io.reactivex.rxjava3.core.Maybe;
-import io.reactivex.rxjava3.core.Single;
 
 @Dao
 public interface UserDao {
@@ -21,7 +20,4 @@ public interface UserDao {
     
     @Query("UPDATE users SET hashedPassword = :newHashedPassword WHERE email = :email")
     Completable updatePassword(String email, String newHashedPassword);
-    
-    @Query("SELECT COUNT(*) FROM users WHERE email = :email")
-    Single<Integer> checkEmailExists(String email);
 }

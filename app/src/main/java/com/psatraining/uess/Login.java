@@ -30,12 +30,10 @@ import com.psatraining.uess.model.AuthRequest;
 import com.psatraining.uess.model.AuthResponse;
 import com.psatraining.uess.Utility.QRUtility;
 import com.psatraining.uess.model.User;
-
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
 import java.util.UUID;
-
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
@@ -167,7 +165,6 @@ public class Login extends AppCompatActivity {
                 SignInCredential credential = signInClient.getSignInCredentialFromIntent(data);
                 String idToken = credential.getGoogleIdToken();
                 String email = credential.getId();
-                String displayName = credential.getDisplayName();
                 String givenName = credential.getGivenName();
                 String familyName = credential.getFamilyName();
 
@@ -175,15 +172,10 @@ public class Login extends AppCompatActivity {
                     // Got an ID token from Google. Use it to authenticate with our backend.
                     Log.d(TAG, "Got ID token and email: " + email);
 
-                    // Create timestamp for the authentication request
-                    String timestamp = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US)
-                            .format(new Date());
-
                     // Create the authentication request object
-                    AuthRequest authRequest = new AuthRequest(email,
+                    AuthRequest authRequest = createAuthRequest(email,
                             givenName != null ? givenName : "",
-                            familyName != null ? familyName : "",
-                            timestamp);
+                            familyName != null ? familyName : "");
 
                     // Make the API call to authenticate the user
                     authenticateUser(authRequest);
@@ -245,21 +237,8 @@ public class Login extends AppCompatActivity {
                     }
                 } else {
                     // Handle unsuccessful response
-                    String errorMessage = "Server error: ";
-                    if (response.code() == 500) {
-                        errorMessage += "Internal server error. Please contact administrator.";
-                    } else if (response.code() == 404) {
-                        errorMessage += "Server endpoint not found. Please check server configuration.";
-                    } else {
-                        errorMessage += response.code() + " " + response.message();
-                    }
-                    
-                    AlertDialog.Builder builder = new AlertDialog.Builder(Login.this);
-                    builder.setTitle("Server Error")
-                           .setMessage(errorMessage)
-                           .setPositiveButton("OK", null)
-                           .show();
-                    
+                    String errorMessage = getServerErrorMessage(response.code());
+                    showErrorDialog("Server Error", errorMessage);
                     Log.e(TAG, "Server error: " + response.code() + " " + response.message());
                 }
             }
@@ -268,12 +247,8 @@ public class Login extends AppCompatActivity {
             public void onFailure(Call<AuthResponse> call, Throwable t) {
                 // Handle network failure - show specific message for Google sign-in requiring internet
                 Log.e(TAG, "Network error", t);
-                
-                AlertDialog.Builder builder = new AlertDialog.Builder(Login.this);
-                builder.setTitle("Internet Connection Required")
-                       .setMessage("You need an internet connection to sign in with Google. Please check your connection and try again.")
-                       .setPositiveButton("OK", null)
-                       .show();
+                showErrorDialog("Internet Connection Required", 
+                    "You need an internet connection to sign in with Google. Please check your connection and try again.");
             }
         });
     }
@@ -281,11 +256,7 @@ public class Login extends AppCompatActivity {
     @SuppressLint("CheckResult")
     private void checkUserLocallyAfterBackendAuth(String email) {
         // Show loading dialog
-        AlertDialog.Builder loadingBuilder = new AlertDialog.Builder(this);
-        loadingBuilder.setTitle("Checking Account");
-        loadingBuilder.setMessage("Please wait...");
-        loadingBuilder.setCancelable(false);
-        AlertDialog loadingDialog = loadingBuilder.create();
+        AlertDialog loadingDialog = createLoadingDialog("Checking Account", "Please wait...");
         loadingDialog.show();
         
         try {
@@ -407,12 +378,6 @@ public class Login extends AppCompatActivity {
         dialog.show();
     }
     
-    private void displayPasswordDialog(String email) {
-        // This method is now simplified since we don't store passwords in backend
-        // Just show the password login dialog directly
-        showPasswordLoginDialog(email);
-    }
-    
     private void showPasswordRegistrationDialog(String email) {
         // Create the dialog for initial password setup
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
@@ -470,8 +435,7 @@ public class Login extends AppCompatActivity {
     private void saveUserToLocalDatabase(String email, String hashedPassword, AlertDialog dialog) {
         // Fetch user details from backend and save to local database
         AuthService authService = RetrofitClient.getClient().create(AuthService.class);
-        AuthRequest checkRequest = new AuthRequest(email, "", "", 
-                new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).format(new Date()));
+        AuthRequest checkRequest = createAuthRequest(email, "", "");
         
         Call<AuthResponse> checkCall = authService.authenticateUser(checkRequest);
         checkCall.enqueue(new Callback<AuthResponse>() {
@@ -618,122 +582,11 @@ public class Login extends AppCompatActivity {
     private void showAccountNotExistDialog() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Login Error")
-               .setMessage("Account does not exist. Please connect to the internet and sign up with Google to authenticate.")
+               .setMessage("Account does not exist. Please connect to the internet and sign in with Google to authenticate.")
                .setPositiveButton("OK", null)
                .show();
     }
     
-    /**
-     * Check user credentials with the backend server
-     * @param email User email
-     * @param hashedPassword Hashed password to check
-     */
-    private void checkUserWithBackend(String email, String hashedPassword) {
-        // Create authentication request
-        AuthRequest checkRequest = new AuthRequest(email, "", "", 
-                new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).format(new Date()));
-        
-        AuthService authService = RetrofitClient.getClient().create(AuthService.class);
-        Call<AuthResponse> checkCall = authService.authenticateUser(checkRequest);
-        
-        checkCall.enqueue(new Callback<AuthResponse>() {
-            @Override
-            public void onResponse(Call<AuthResponse> call, Response<AuthResponse> response) {
-                if (response.isSuccessful() && response.body() != null) {
-                    AuthResponse authResponse = response.body();
-                    
-                    if ("success".equals(authResponse.getStatus()) && authResponse.isExists()) {
-                        // User exists in backend but not in local DB, prompt to set password
-                        Toast.makeText(Login.this, "Please set up your password", Toast.LENGTH_SHORT).show();
-                        showPasswordRegistrationDialog(email);
-                    } else {
-                        // User doesn't exist in backend either
-                        Toast.makeText(Login.this, "Invalid email or password", Toast.LENGTH_SHORT).show();
-                    }
-                } else {
-                    // Server error
-                    Toast.makeText(Login.this, "Server error. Please try again later.", Toast.LENGTH_SHORT).show();
-                }
-            }
-            
-            @Override
-            public void onFailure(Call<AuthResponse> call, Throwable t) {
-                Toast.makeText(Login.this, "Network error. Please check your connection.", Toast.LENGTH_SHORT).show();
-            }
-        });
-    }
-    
-    /**
-     * Fetch user details from backend and save to local database
-     * @param email User email
-     * @param hashedPassword Hashed password
-     */
-    private void fetchUserDetailsAndSaveToLocalDB(String email, String hashedPassword) {
-        // Create authentication request to get user details
-        AuthRequest checkRequest = new AuthRequest(email, "", "", 
-                new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).format(new Date()));
-        
-        AuthService authService = RetrofitClient.getClient().create(AuthService.class);
-        Call<AuthResponse> checkCall = authService.authenticateUser(checkRequest);
-        
-        checkCall.enqueue(new Callback<AuthResponse>() {
-            @SuppressLint("CheckResult")
-            @Override
-            public void onResponse(Call<AuthResponse> call, Response<AuthResponse> response) {
-                if (response.isSuccessful() && response.body() != null) {
-                    AuthResponse authResponse = response.body();
-                    
-                    if ("success".equals(authResponse.getStatus()) && authResponse.isExists() 
-                            && authResponse.getUser() != null) {
-                        // Get user details from response
-                        AuthResponse.User backendUser = authResponse.getUser();
-                        
-                        // Initialize database if not already initialized
-                        if (database == null) {
-                            database = AppDatabase.getInstance(getApplicationContext());
-                        }
-                        
-                        // Create User object for local database
-                        User localUser = new User(
-                                UUID.randomUUID().toString(), // Generate a unique ID
-                                backendUser.getName() != null ? backendUser.getName() : "",
-                                backendUser.getSurname() != null ? backendUser.getSurname() : "",
-                                email,
-                                backendUser.getRole() != null ? backendUser.getRole() : "user",
-                                hashedPassword, // Use the hashed password
-                                System.currentTimeMillis() // Current timestamp
-                        );
-                        
-                        // Save to local database
-                        database.userDao().insert(localUser)
-                            .subscribe(
-                                () -> {
-                                    // Navigate to main activity after successful login
-                                    Intent intent = new Intent(Login.this, Homepage.class);
-                                    startActivity(intent);
-                                    finish();
-                                },
-                                error -> {
-                                    Toast.makeText(Login.this, "Error saving to local database: " + error.getMessage(), 
-                                                  Toast.LENGTH_SHORT).show();
-                                    Log.e(TAG, "Database error", error);
-                                }
-                            );
-                    } else {
-                        Toast.makeText(Login.this, "Failed to get user details from server", Toast.LENGTH_SHORT).show();
-                    }
-                } else {
-                    Toast.makeText(Login.this, "Server error retrieving user data", Toast.LENGTH_SHORT).show();
-                }
-            }
-            
-            @Override
-            public void onFailure(Call<AuthResponse> call, Throwable t) {
-                Toast.makeText(Login.this, "Network error. Please check your connection.", Toast.LENGTH_SHORT).show();
-            }
-        });
-    }
-
     /**
      * Initiates the password reset flow by showing Google email selection
      */
@@ -834,8 +687,7 @@ public class Login extends AppCompatActivity {
      */
     private void checkEmailWithBackendForReset(String email) {
         // Create authentication request to check if email exists
-        AuthRequest checkRequest = new AuthRequest(email, "", "", 
-                new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).format(new Date()));
+        AuthRequest checkRequest = createAuthRequest(email, "", "");
         
         AuthService authService = RetrofitClient.getClient().create(AuthService.class);
         Call<AuthResponse> checkCall = authService.authenticateUser(checkRequest);
@@ -854,29 +706,13 @@ public class Login extends AppCompatActivity {
                     } else {
                         // User doesn't exist in backend
                         Log.d(TAG, "User doesn't exist in backend for password reset");
-                        AlertDialog.Builder builder = new AlertDialog.Builder(Login.this);
-                        builder.setTitle("Email Not Found")
-                               .setMessage("The email " + email + " is not registered in the system. Please contact an administrator.")
-                               .setPositiveButton("OK", null)
-                               .show();
+                        showErrorDialog("Email Not Found", 
+                            "The email " + email + " is not registered in the system. Please contact an administrator.");
                     }
                 } else {
                     // Handle unsuccessful response
-                    String errorMessage = "Server error: ";
-                    if (response.code() == 500) {
-                        errorMessage += "Internal server error. Please contact administrator.";
-                    } else if (response.code() == 404) {
-                        errorMessage += "Server endpoint not found. Please check server configuration.";
-                    } else {
-                        errorMessage += response.code() + " " + response.message();
-                    }
-                    
-                    AlertDialog.Builder builder = new AlertDialog.Builder(Login.this);
-                    builder.setTitle("Server Error")
-                           .setMessage(errorMessage)
-                           .setPositiveButton("OK", null)
-                           .show();
-                    
+                    String errorMessage = getServerErrorMessage(response.code());
+                    showErrorDialog("Server Error", errorMessage);
                     Log.e(TAG, "Server error during password reset: " + response.code() + " " + response.message());
                 }
             }
@@ -1036,8 +872,7 @@ public class Login extends AppCompatActivity {
      */
     private void fetchUserDetailsAndSavePasswordReset(String email, String hashedPassword, AlertDialog dialog) {
         // Create authentication request to get user details
-        AuthRequest checkRequest = new AuthRequest(email, "", "", 
-                new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).format(new Date()));
+        AuthRequest checkRequest = createAuthRequest(email, "", "");
         
         AuthService authService = RetrofitClient.getClient().create(AuthService.class);
         Call<AuthResponse> checkCall = authService.authenticateUser(checkRequest);
@@ -1101,6 +936,58 @@ public class Login extends AppCompatActivity {
                 Toast.makeText(Login.this, "Network error. Please check your connection.", Toast.LENGTH_SHORT).show();
             }
         });
+    }
+    
+    // ============ UTILITY METHODS ============
+    
+    /**
+     * Creates a standard loading dialog
+     */
+    private AlertDialog createLoadingDialog(String title, String message) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle(title);
+        builder.setMessage(message);
+        builder.setCancelable(false);
+        return builder.create();
+    }
+    
+    /**
+     * Shows a standard error dialog
+     */
+    private void showErrorDialog(String title, String message) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle(title);
+        builder.setMessage(message);
+        builder.setPositiveButton("OK", null);
+        builder.show();
+    }
+    
+    /**
+     * Creates timestamp for API requests
+     */
+    private String createTimestamp() {
+        return new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).format(new Date());
+    }
+    
+    /**
+     * Handles server error responses
+     */
+    private String getServerErrorMessage(int responseCode) {
+        switch (responseCode) {
+            case 500:
+                return "Internal server error. Please contact administrator.";
+            case 404:
+                return "Server endpoint not found. Please check server configuration.";
+            default:
+                return "Server error: " + responseCode;
+        }
+    }
+    
+    /**
+     * Creates AuthRequest with current timestamp
+     */
+    private AuthRequest createAuthRequest(String email, String firstName, String lastName) {
+        return new AuthRequest(email, firstName, lastName, createTimestamp());
     }
 
 }
