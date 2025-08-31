@@ -3,7 +3,6 @@ package com.psatraining.uess;
 
 import android.annotation.SuppressLint;
 import android.content.Intent;
-import android.content.IntentSender;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.Log;
@@ -16,11 +15,12 @@ import android.widget.Toast;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
-import com.google.android.gms.auth.api.identity.BeginSignInRequest;
-import com.google.android.gms.auth.api.identity.Identity;
-import com.google.android.gms.auth.api.identity.SignInClient;
-import com.google.android.gms.auth.api.identity.SignInCredential;
+import com.google.android.gms.auth.api.signin.GoogleSignIn;
+import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
+import com.google.android.gms.auth.api.signin.GoogleSignInClient;
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
 import com.google.android.gms.common.api.ApiException;
+import com.google.android.gms.tasks.Task;
 import com.google.android.material.textfield.TextInputEditText;
 import com.psatraining.uess.Utility.PasswordHasherUtility;
 import com.psatraining.uess.api.AuthService;
@@ -40,9 +40,8 @@ import retrofit2.Response;
 
 public class Login extends AppCompatActivity {
     private static final String TAG = "Login";
-    private SignInClient signInClient;
-    private BeginSignInRequest beginSignInRequest;
-    private static final int REQ_ONE_TAP = 100;
+    private GoogleSignInClient googleSignInClient;
+    private static final int RC_SIGN_IN = 100;
     private static final int REQ_PASSWORD_RESET = 101;
     
     // Database reference
@@ -64,21 +63,13 @@ public class Login extends AppCompatActivity {
         Button googleSignInButton = findViewById(R.id.button);  // Google sign up button
         TextView forgotPasswordLink = findViewById(R.id.textView5);  // Forgot Password link
 
-        signInClient = Identity.getSignInClient(this);
-        beginSignInRequest = BeginSignInRequest.builder()
-                .setPasswordRequestOptions(BeginSignInRequest.PasswordRequestOptions.builder()
-                        .setSupported(true)
-                        .build())
-                .setGoogleIdTokenRequestOptions(BeginSignInRequest.GoogleIdTokenRequestOptions.builder()
-                        .setSupported(true)
-                        // Your server's client ID, not your Android client ID.
-                        .setServerClientId(getString(R.string.google_client_id))
-                        // Only show accounts previously used to sign in.
-                        .setFilterByAuthorizedAccounts(false)
-                        .build())
-                // Automatically sign in when exactly one credential is retrieved.
-                .setAutoSelectEnabled(true)
+        // Configure Google Sign-In to request ID tokens and basic profile
+        GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                .requestIdToken(getString(R.string.google_client_id))
+                .requestEmail()
                 .build();
+
+        googleSignInClient = GoogleSignIn.getClient(this, gso);
 
         // Initialize database
         database = AppDatabase.getInstance(getApplicationContext());
@@ -140,35 +131,28 @@ public class Login extends AppCompatActivity {
     }
 
     private void buttonGoogleSignIn(View view){
-        signInClient.beginSignIn(beginSignInRequest)
-                .addOnSuccessListener(this, result -> {
-                    try {
-                        startIntentSenderForResult(
-                                result.getPendingIntent().getIntentSender(), REQ_ONE_TAP,
-                                null, 0, 0, 0);
-                    } catch (IntentSender.SendIntentException e) {
-                        Log.e(TAG, "Couldn't start One Tap UI: " + e.getLocalizedMessage());
-                    }
-                })
-                .addOnFailureListener(this, e -> {
-                    String errorMessage = e.getLocalizedMessage();
-                    Log.d(TAG, "Google Sign-In failed: " + errorMessage);
-                    Toast.makeText(Login.this, "Sign-In Error: " + errorMessage, Toast.LENGTH_LONG).show();
-                });
+        // Sign out first to ensure the user must log in again in the browser
+        googleSignInClient.signOut().addOnCompleteListener(this, task -> {
+            // Now start the sign-in intent which will open in browser
+            Intent signInIntent = googleSignInClient.getSignInIntent();
+            startActivityForResult(signInIntent, RC_SIGN_IN);
+        });
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == REQ_ONE_TAP) {
+        if (requestCode == RC_SIGN_IN) {
+            // Handle Google Sign-In result
+            Task<GoogleSignInAccount> task = GoogleSignIn.getSignedInAccountFromIntent(data);
             try {
-                SignInCredential credential = signInClient.getSignInCredentialFromIntent(data);
-                String idToken = credential.getGoogleIdToken();
-                String email = credential.getId();
-                String givenName = credential.getGivenName();
-                String familyName = credential.getFamilyName();
+                GoogleSignInAccount account = task.getResult(ApiException.class);
+                String idToken = account.getIdToken();
+                String email = account.getEmail();
+                String givenName = account.getGivenName();
+                String familyName = account.getFamilyName();
 
-                if (idToken != null) {
+                if (idToken != null && email != null) {
                     // Got an ID token from Google. Use it to authenticate with our backend.
                     Log.d(TAG, "Got ID token and email: " + email);
 
@@ -179,24 +163,41 @@ public class Login extends AppCompatActivity {
 
                     // Make the API call to authenticate the user
                     authenticateUser(authRequest);
+                    
+                    // Sign out immediately after getting the credentials to ensure fresh login next time
+                    googleSignInClient.signOut().addOnCompleteListener(this, signOutTask -> {
+                        Log.d(TAG, "User signed out from Google after authentication");
+                    });
+                } else {
+                    Log.e(TAG, "ID token or email is null");
+                    Toast.makeText(this, "Failed to get authentication details", Toast.LENGTH_SHORT).show();
                 }
             } catch (ApiException e) {
-                Log.e(TAG, "Error getting sign-in credentials: " + e.getMessage(), e);
-                Toast.makeText(this, "Authentication failed: " + e.getLocalizedMessage(), Toast.LENGTH_SHORT).show();
+                Log.e(TAG, "Error getting sign-in result: " + e.getMessage(), e);
+                Toast.makeText(this, "Google Sign-In failed: " + e.getLocalizedMessage(), Toast.LENGTH_SHORT).show();
             }
         } else if (requestCode == REQ_PASSWORD_RESET) {
+            // Handle password reset flow using the legacy Google Sign-In
+            Task<GoogleSignInAccount> task = GoogleSignIn.getSignedInAccountFromIntent(data);
             try {
-                SignInCredential credential = signInClient.getSignInCredentialFromIntent(data);
-                String email = credential.getId();
-
+                GoogleSignInAccount account = task.getResult(ApiException.class);
+                String email = account.getEmail();
+                
                 if (email != null) {
-                    // Got email for password reset. Check in local database first
-                    Log.d(TAG, "Got email for password reset: " + email);
+                    // Check if email exists for password reset
                     checkEmailForPasswordReset(email);
+                    
+                    // Sign out immediately after getting the email
+                    googleSignInClient.signOut().addOnCompleteListener(this, signOutTask -> {
+                        Log.d(TAG, "User signed out from Google after password reset email selection");
+                    });
+                } else {
+                    Log.e(TAG, "Email is null during password reset");
+                    Toast.makeText(this, "Failed to get email for password reset", Toast.LENGTH_SHORT).show();
                 }
             } catch (ApiException e) {
                 Log.e(TAG, "Error getting email for password reset: " + e.getMessage(), e);
-                Toast.makeText(this, "Failed to get email: " + e.getLocalizedMessage(), Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Email selection failed: " + e.getLocalizedMessage(), Toast.LENGTH_SHORT).show();
             }
         }
     }
@@ -588,25 +589,24 @@ public class Login extends AppCompatActivity {
     }
     
     /**
-     * Initiates the password reset flow by showing Google email selection
+     * Initiates the password reset flow by showing Google email selection in browser
      */
     private void initiatePasswordReset() {
-        signInClient.beginSignIn(beginSignInRequest)
-                .addOnSuccessListener(this, result -> {
-                    try {
-                        startIntentSenderForResult(
-                                result.getPendingIntent().getIntentSender(), REQ_PASSWORD_RESET,
-                                null, 0, 0, 0);
-                    } catch (IntentSender.SendIntentException e) {
-                        Log.e(TAG, "Couldn't start email selection for password reset: " + e.getLocalizedMessage());
-                        Toast.makeText(Login.this, "Failed to show email selection", Toast.LENGTH_SHORT).show();
-                    }
-                })
-                .addOnFailureListener(this, e -> {
-                    String errorMessage = e.getLocalizedMessage();
-                    Log.d(TAG, "Email selection for password reset failed: " + errorMessage);
-                    Toast.makeText(Login.this, "Email selection failed: " + errorMessage, Toast.LENGTH_LONG).show();
-                });
+        // Sign out first to ensure the user must log in again in the browser
+        googleSignInClient.signOut().addOnCompleteListener(this, task -> {
+            // Now start the sign-in intent for password reset which will open in browser
+            Intent signInIntent = googleSignInClient.getSignInIntent();
+            startActivityForResult(signInIntent, REQ_PASSWORD_RESET);
+        });
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        // Clean up Google Sign-In client
+        if (googleSignInClient != null) {
+            googleSignInClient.signOut();
+        }
     }
 
     /**

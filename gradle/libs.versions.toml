@@ -18,6 +18,7 @@ rxjava = "3.1.11"
 securityCrypto = "1.1.0"
 sqlite = "2.5.2"
 zxingAndroidEmbedded = "4.3.0"
+browser = "1.9.0"
 
 [libraries]
 adapter-rxjava3 = { module = "com.squareup.retrofit2:adapter-rxjava3", version.ref = "retrofit" }
@@ -40,6 +41,7 @@ rxjava = { module = "io.reactivex.rxjava3:rxjava", version.ref = "rxjava" }
 security-crypto = { module = "androidx.security:security-crypto", version.ref = "securityCrypto" }
 sqlite = { module = "androidx.sqlite:sqlite", version.ref = "sqlite" }
 zxing-android-embedded = { module = "com.journeyapps:zxing-android-embedded", version.ref = "zxingAndroidEmbedded" }
+browser = { group = "androidx.browser", name = "browser", version.ref = "browser" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

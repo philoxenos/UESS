@@ -2,7 +2,7 @@
     <string name="app_name">UESS</string>
 
     <!-- Google Sign-In Configuration -->
-    <string name="google_client_id">904774983485-set6ptkk5s0gq40a9uec8uuc31d0as2c.apps.googleusercontent.com</string>
+    <string name="google_client_id">904774983485-9adk2aujuhujjo62eklp0rfe12osgdu7.apps.googleusercontent.com</string>
 
     <!-- Authentication strings -->
     <string name="login_email_hint">Email address</string>
